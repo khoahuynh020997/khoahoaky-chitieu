@@ -88,7 +88,7 @@
                     <span id="unit-display" class="text-xl font-bold text-slate-400">.000đ</span>
                 </div>
                 
-                <p id="amount-preview" class="text-xs text-slate-500 h-4 mt-1 font-medium">Bằng chữ: 0 VNĐ</p>
+                <p id="amount-preview" class="text-xs text-slate-500 h-4 mt-1 font-medium">= 0 VNĐ</p>
             </div>
 
             <!-- CHỌN DANH MỤC (NHẤN VÀO LÀ LƯU LUÔN) -->
@@ -205,7 +205,7 @@
 
         // Biến trạng thái ứng dụng
         let currentAmountStr = "0";
-        let currentType = "expense"; // 'expense' hoặc 'income'
+        let currentType = "expense"; 
         let currentFilterRange = 'today';
         let transactions = JSON.parse(localStorage.getItem('3s_transactions') || '[]');
         let chartInstance = null;
@@ -269,13 +269,13 @@
             lucide.createIcons();
         }
 
-        // Xử lý bấm bàn phím số (Đã nâng giới hạn lên 9 chữ số)
+        // Xử lý bấm bàn phím số
         function pressNum(num) {
             if (currentAmountStr === "0") {
                 if (num === "0" || num === "00") return;
                 currentAmountStr = num;
             } else {
-                if (currentAmountStr.length < 9) { 
+                if ((currentAmountStr + num).length <= 9) { 
                     currentAmountStr += num;
                 }
             }
@@ -298,11 +298,8 @@
             
             displayEl.innerText = Number(currentAmountStr).toLocaleString('vi-VN');
             
-            // Tính tổng tiền thật (Thêm 3 số 0 mặc định)
             const actualAmount = Number(currentAmountStr) * 1000;
-            previewEl.innerText = actualAmount > 0 
-                ? `= ${actualAmount.toLocaleString('vi-VN')} VNĐ` 
-                : 'Bằng chữ: 0 VNĐ';
+            previewEl.innerText = `= ${actualAmount.toLocaleString('vi-VN')} VNĐ`;
         }
 
         // THAO TÁC CỐT LÕI: Lưu giao dịch ngay lập tức (1-Chạm)
@@ -336,6 +333,9 @@
             // Reset bàn phím về trạng thái ban đầu
             currentAmountStr = "0";
             updateDisplay();
+            
+            // Cập nhật lại số liệu báo cáo ngầm
+            renderStats(currentFilterRange);
         }
 
         // Thông báo Toast
@@ -363,7 +363,12 @@
 
             container.innerHTML = transactions.map(tx => {
                 const dateObj = new Date(tx.date);
-                const timeStr = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')} - ${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+                const hours = dateObj.getHours().toString().padStart(2, '0');
+                const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+                const day = dateObj.getDate().toString().padStart(2, '0');
+                const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+                
+                const timeStr = `${hours}:${minutes} - ${day}/${month}`;
                 const isExpense = tx.type === 'expense';
                 
                 return `
@@ -387,7 +392,6 @@
                 `;
             }).join('');
             
-            // Đã sửa: Khởi tạo lại Lucide Icon sau khi gán innerHTML
             lucide.createIcons();
         }
 
@@ -396,6 +400,7 @@
             transactions = transactions.filter(t => t.id !== id);
             localStorage.setItem('3s_transactions', JSON.stringify(transactions));
             renderHistory();
+            renderStats(currentFilterRange); 
         }
 
         // Xóa tất cả dữ liệu
@@ -404,6 +409,7 @@
                 transactions = [];
                 localStorage.removeItem('3s_transactions');
                 renderHistory();
+                renderStats(currentFilterRange); 
             }
         }
 
@@ -488,12 +494,13 @@
         function renderChart(categoryData) {
             const ctx = document.getElementById('expenseChart').getContext('2d');
             
-            // Đã sửa: Hủy chart cũ trước bất kể có dữ liệu mới hay không
+            // Luôn luôn hủy biểu đồ cũ nếu tồn tại
             if (chartInstance) {
                 chartInstance.destroy();
                 chartInstance = null;
             }
 
+            // Nếu không có dữ liệu thì không khởi tạo biểu đồ mới
             if (categoryData.length === 0) {
                 return;
             }
