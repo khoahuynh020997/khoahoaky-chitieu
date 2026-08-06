@@ -206,6 +206,7 @@
         // Biến trạng thái ứng dụng
         let currentAmountStr = "0";
         let currentType = "expense"; // 'expense' hoặc 'income'
+        let currentFilterRange = 'today';
         let transactions = JSON.parse(localStorage.getItem('3s_transactions') || '[]');
         let chartInstance = null;
 
@@ -232,7 +233,7 @@
             } else if (tab === 'stats') {
                 document.getElementById('view-stats').classList.remove('hidden');
                 document.getElementById('tab-stats-btn').className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 transition-all";
-                renderStats('today');
+                renderStats(currentFilterRange);
             } else if (tab === 'history') {
                 document.getElementById('view-history').classList.remove('hidden');
                 document.getElementById('tab-history-btn').className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 transition-all";
@@ -268,13 +269,13 @@
             lucide.createIcons();
         }
 
-        // Xử lý bấm bàn phím số
+        // Xử lý bấm bàn phím số (Đã nâng giới hạn lên 9 chữ số)
         function pressNum(num) {
             if (currentAmountStr === "0") {
                 if (num === "0" || num === "00") return;
                 currentAmountStr = num;
             } else {
-                if (currentAmountStr.length < 7) { // Giới hạn độ dài để không tràn màn hình
+                if (currentAmountStr.length < 9) { 
                     currentAmountStr += num;
                 }
             }
@@ -385,6 +386,8 @@
                     </div>
                 `;
             }).join('');
+            
+            // Đã sửa: Khởi tạo lại Lucide Icon sau khi gán innerHTML
             lucide.createIcons();
         }
 
@@ -406,6 +409,7 @@
 
         // Lọc và Tính toán Thống kê Báo cáo
         function filterStats(range) {
+            currentFilterRange = range;
             ['today', 'week', 'month'].forEach(r => {
                 const btn = document.getElementById(`filter-${r}`);
                 if (r === range) {
@@ -484,8 +488,10 @@
         function renderChart(categoryData) {
             const ctx = document.getElementById('expenseChart').getContext('2d');
             
+            // Đã sửa: Hủy chart cũ trước bất kể có dữ liệu mới hay không
             if (chartInstance) {
                 chartInstance.destroy();
+                chartInstance = null;
             }
 
             if (categoryData.length === 0) {
